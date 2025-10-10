@@ -8,6 +8,7 @@ from __future__ import annotations
 from collections import deque
 from typing import Any
 
+from cfnlint.context.conditions.exceptions import Unsatisfiable
 from cfnlint.jsonschema import ValidationError, ValidationResult, Validator
 from cfnlint.rules.jsonschema.CfnLintKeyword import CfnLintKeyword
 
@@ -25,7 +26,7 @@ class SnapStartSupported(CfnLintKeyword):
 
     def __init__(self):
         super().__init__(["Resources/AWS::Lambda::Function/Properties"])
-        self.child_rules = {"I2530": None}
+        self.child_rules = {"I2530": None, "W1028": None}
         self.regions = [
             "us-east-2",
             "us-east-1",
@@ -79,6 +80,7 @@ class SnapStartSupported(CfnLintKeyword):
             ["Runtime", "SnapStart"],
         ):
             props = scenario.get("Object")
+            scenario_conditions = scenario.get("Scenario")
 
             runtime = props.get("Runtime")
             snap_start = props.get("SnapStart")
@@ -94,6 +96,17 @@ class SnapStartSupported(CfnLintKeyword):
 
             if snap_start.get("ApplyOn") != "PublishedVersions":
                 continue
+
+            # Check if SnapStart configuration is reachable
+            if scenario_conditions:
+                try:
+                    validator.context.conditions.evolve(scenario_conditions)
+                except Unsatisfiable as e:
+                    yield ValidationError(
+                        f"SnapStart configuration is not reachable. {e.message}",
+                        path=deque(["SnapStart", "ApplyOn"]),
+                        rule=self.child_rules["W1028"],
+                    )
 
             if any(region not in self.regions for region in validator.context.regions):
                 unsupported_regions = [
