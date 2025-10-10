@@ -178,29 +178,15 @@ class StateMachineDefinition(CfnLintJsonSchema):
                     if isinstance(default_state, str) and default_state not in reachable:
                         to_visit.append(default_state)
             
-            # Parallel state
-            if state_type == "Parallel" and "Branches" in state:
-                branches = state.get("Branches", [])
-                if isinstance(branches, list):
-                    for branch in branches:
-                        if isinstance(branch, dict):
-                            branch_start = branch.get("StartAt")
-                            if isinstance(branch_start, str) and branch_start not in reachable:
-                                to_visit.append(branch_start)
+            # Parallel state - don't add nested states to reachable set
+            if state_type == "Parallel":
                 if "Next" in state:
                     next_state = state["Next"]
                     if isinstance(next_state, str) and next_state not in reachable:
                         to_visit.append(next_state)
             
-            # Map state
+            # Map state - don't add nested states to reachable set
             if state_type == "Map":
-                # Handle both Iterator (deprecated) and ItemProcessor
-                for processor_key in ["Iterator", "ItemProcessor"]:
-                    processor = state.get(processor_key)
-                    if isinstance(processor, dict):
-                        proc_start = processor.get("StartAt")
-                        if isinstance(proc_start, str) and proc_start not in reachable:
-                            to_visit.append(proc_start)
                 if "Next" in state:
                     next_state = state["Next"]
                     if isinstance(next_state, str) and next_state not in reachable:
