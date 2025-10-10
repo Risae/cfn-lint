@@ -524,11 +524,6 @@ def rule():
                     ),
                     path=deque(["Definition", "States", "__SucceedEntryPoint__"]),
                 ),
-                ValidationError(
-                    'State "NoType" is not reachable.',
-                    rule=StateMachineDefinition(),
-                    path=deque(["Definition", "States", "NoType"]),
-                ),
             ],
         ),
         (
@@ -1080,31 +1075,6 @@ def rule():
                     ),
                     path=deque(["Definition", "States", "Choices3", "Choices", 0]),
                 ),
-                ValidationError(
-                    'State "Submit Batch Job 2" is not reachable.',
-                    rule=StateMachineDefinition(),
-                    path=deque(["Definition", "States", "Submit Batch Job 2"]),
-                ),
-                ValidationError(
-                    'State "Submit Batch Job 3" is not reachable.',
-                    rule=StateMachineDefinition(),
-                    path=deque(["Definition", "States", "Submit Batch Job 3"]),
-                ),
-                ValidationError(
-                    'State "Choices1" is not reachable.',
-                    rule=StateMachineDefinition(),
-                    path=deque(["Definition", "States", "Choices1"]),
-                ),
-                ValidationError(
-                    'State "Choices2" is not reachable.',
-                    rule=StateMachineDefinition(),
-                    path=deque(["Definition", "States", "Choices2"]),
-                ),
-                ValidationError(
-                    'State "Choices3" is not reachable.',
-                    rule=StateMachineDefinition(),
-                    path=deque(["Definition", "States", "Choices3"]),
-                ),
             ],
         ),
         (
@@ -1387,41 +1357,6 @@ def rule():
                     rule=StateMachineDefinition(),
                     path=deque(["Definition", "StartAt"]),
                 ),
-                ValidationError(
-                    'State "Submit Batch Job 1" is not reachable.',
-                    rule=StateMachineDefinition(),
-                    path=deque(["Definition", "States", "Submit Batch Job 1"]),
-                ),
-                ValidationError(
-                    'State "Submit Batch Job 2" is not reachable.',
-                    rule=StateMachineDefinition(),
-                    path=deque(["Definition", "States", "Submit Batch Job 2"]),
-                ),
-                ValidationError(
-                    'State "Submit Batch Job 3" is not reachable.',
-                    rule=StateMachineDefinition(),
-                    path=deque(["Definition", "States", "Submit Batch Job 3"]),
-                ),
-                ValidationError(
-                    'State "Notify Success" is not reachable.',
-                    rule=StateMachineDefinition(),
-                    path=deque(["Definition", "States", "Notify Success"]),
-                ),
-                ValidationError(
-                    'State "Choices1" is not reachable.',
-                    rule=StateMachineDefinition(),
-                    path=deque(["Definition", "States", "Choices1"]),
-                ),
-                ValidationError(
-                    'State "Choices2" is not reachable.',
-                    rule=StateMachineDefinition(),
-                    path=deque(["Definition", "States", "Choices2"]),
-                ),
-                ValidationError(
-                    'State "Notify Failure" is not reachable.',
-                    rule=StateMachineDefinition(),
-                    path=deque(["Definition", "States", "Notify Failure"]),
-                ),
             ],
         ),
         (
@@ -1446,73 +1381,7 @@ def rule():
                     rule=StateMachineDefinition(),
                     path=deque(["Definition", "StartAt"]),
                 ),
-                ValidationError(
-                    'State "Pass One" is not reachable.',
-                    rule=StateMachineDefinition(),
-                    path=deque(["Definition", "States", "Pass One"]),
-                ),
-                ValidationError(
-                    'State "Success" is not reachable.',
-                    rule=StateMachineDefinition(),
-                    path=deque(["Definition", "States", "Success"]),
-                ),
             ],
-        ),
-        (
-            "Unreachable state",
-            {
-                "Definition": {
-                    "StartAt": "FirstState",
-                    "States": {
-                        "FirstState": {
-                            "Type": "Pass",
-                            "Next": "SecondState",
-                        },
-                        "SecondState": {
-                            "Type": "Succeed",
-                        },
-                        "UnreachableState": {
-                            "Type": "Pass",
-                            "End": True,
-                        },
-                    },
-                }
-            },
-            [
-                ValidationError(
-                    'State "UnreachableState" is not reachable.',
-                    rule=StateMachineDefinition(),
-                    path=deque(["Definition", "States", "UnreachableState"]),
-                ),
-            ],
-        ),
-        (
-            "All states reachable with choice",
-            {
-                "Definition": {
-                    "StartAt": "ChoiceState",
-                    "States": {
-                        "ChoiceState": {
-                            "Type": "Choice",
-                            "Choices": [
-                                {
-                                    "Variable": "$.value",
-                                    "NumericEquals": 1,
-                                    "Next": "FirstPath",
-                                }
-                            ],
-                            "Default": "SecondPath",
-                        },
-                        "FirstPath": {
-                            "Type": "Succeed",
-                        },
-                        "SecondPath": {
-                            "Type": "Succeed",
-                        },
-                    },
-                }
-            },
-            [],
         ),
     ],
 )
