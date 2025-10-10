@@ -103,6 +103,131 @@ class StateMachineDefinition(CfnLintJsonSchema):
             if ql == "JSONata":
                 yield self._convert_schema_to_jsonata(), ql_validator
 
+    def _validate_reachability(
+        self, definition: Any, k: str, add_path_to_message: bool
+    ) -> ValidationResult:
+        """Validate that StartAt points to an existing state and all states are reachable."""
+        if not isinstance(definition, dict):
+            return
+        
+        start_at = definition.get("StartAt")
+        states = definition.get("States")
+        
+        if not start_at or not isinstance(states, dict):
+            return
+        
+        # Check if StartAt state exists
+        if start_at not in states:
+            message = f"Missing 'Next' target: {start_at} at /StartAt"
+            if not add_path_to_message:
+                message = f"Missing 'Next' target: {start_at}"
+            yield ValidationError(
+                message,
+                path=deque([k, "StartAt"]),
+                rule=self,
+            )
+            # If StartAt doesn't exist, all states are unreachable
+            for state_name in states.keys():
+                message = f'State "{state_name}" is not reachable. at /States/{state_name}'
+                if not add_path_to_message:
+                    message = f'State "{state_name}" is not reachable.'
+                yield ValidationError(
+                    message,
+                    path=deque([k, "States", state_name]),
+                    rule=self,
+                )
+            return
+        
+        # Find all reachable states
+        reachable = set()
+        to_visit = [start_at]
+        
+        while to_visit:
+            current = to_visit.pop()
+            if current in reachable or current not in states:
+                continue
+            
+            reachable.add(current)
+            state = states[current]
+            
+            if not isinstance(state, dict):
+                continue
+            
+            # Handle different state types
+            state_type = state.get("Type")
+            
+            # Task, Pass, Wait states
+            if "Next" in state:
+                next_state = state["Next"]
+                if isinstance(next_state, str) and next_state not in reachable:
+                    to_visit.append(next_state)
+            
+            # Choice state
+            if state_type == "Choice":
+                choices = state.get("Choices", [])
+                if isinstance(choices, list):
+                    for choice in choices:
+                        if isinstance(choice, dict) and "Next" in choice:
+                            next_state = choice["Next"]
+                            if isinstance(next_state, str) and next_state not in reachable:
+                                to_visit.append(next_state)
+                
+                # Default transition
+                if "Default" in state:
+                    default_state = state["Default"]
+                    if isinstance(default_state, str) and default_state not in reachable:
+                        to_visit.append(default_state)
+            
+            # Parallel state
+            if state_type == "Parallel" and "Branches" in state:
+                branches = state.get("Branches", [])
+                if isinstance(branches, list):
+                    for branch in branches:
+                        if isinstance(branch, dict):
+                            branch_start = branch.get("StartAt")
+                            if isinstance(branch_start, str) and branch_start not in reachable:
+                                to_visit.append(branch_start)
+                if "Next" in state:
+                    next_state = state["Next"]
+                    if isinstance(next_state, str) and next_state not in reachable:
+                        to_visit.append(next_state)
+            
+            # Map state
+            if state_type == "Map":
+                # Handle both Iterator (deprecated) and ItemProcessor
+                for processor_key in ["Iterator", "ItemProcessor"]:
+                    processor = state.get(processor_key)
+                    if isinstance(processor, dict):
+                        proc_start = processor.get("StartAt")
+                        if isinstance(proc_start, str) and proc_start not in reachable:
+                            to_visit.append(proc_start)
+                if "Next" in state:
+                    next_state = state["Next"]
+                    if isinstance(next_state, str) and next_state not in reachable:
+                        to_visit.append(next_state)
+            
+            # Catch handlers (for Task, Parallel, Map states)
+            if "Catch" in state:
+                catchers = state.get("Catch", [])
+                if isinstance(catchers, list):
+                    for catcher in catchers:
+                        if isinstance(catcher, dict) and "Next" in catcher:
+                            next_state = catcher["Next"]
+                            if isinstance(next_state, str) and next_state not in reachable:
+                                to_visit.append(next_state)
+        
+        # Report unreachable states
+        for state_name in states.keys():
+            if state_name not in reachable:
+                message = f'State "{state_name}" is not reachable. at /States/{state_name}'
+                if not add_path_to_message:
+                    message = f'State "{state_name}" is not reachable.'
+                yield ValidationError(
+                    message,
+                    path=deque([k, "States", state_name]),
+                    rule=self,
+                )
+
     def _validate_step(
         self,
         validator: Validator,
@@ -133,6 +258,9 @@ class StateMachineDefinition(CfnLintJsonSchema):
                 err.rule = self
 
             yield self._clean_error(err)
+        
+        # Validate state reachability
+        yield from self._validate_reachability(value, k, add_path_to_message)
 
     def validate(
         self, validator: Validator, keywords: Any, instance: Any, schema: dict[str, Any]
