@@ -1087,7 +1087,7 @@ def rule():
                         "Language for notification on an "
                         "AWS Batch job completion"
                     ),
-                    "StartAt": "Submit Batch Job",
+                    "StartAt": "Submit Batch Job 1",
                     "TimeoutSeconds": 3600,
                     "QueryLanguage": "JSONata",
                     "States": {
@@ -1351,12 +1351,7 @@ def rule():
                     path=deque(
                         ["Definition", "States", "Notify Failure", "Parameters"]
                     ),
-                ),
-                ValidationError(
-                    "StartAt target does not exist: Submit Batch Job",
-                    rule=StateMachineDefinition(),
-                    path=deque(["Definition", "StartAt"]),
-                ),
+                )
             ],
         ),
         (
@@ -1377,7 +1372,7 @@ def rule():
             },
             [
                 ValidationError(
-                    "StartAt target does not exist: Not sure",
+                    "MISSING_TRANSITION_TARGET: Missing 'Next' target 'Not sure' at /StartAt",
                     rule=StateMachineDefinition(),
                     path=deque(["Definition", "StartAt"]),
                 ),
