@@ -1352,6 +1352,97 @@ def rule():
                         ["Definition", "States", "Notify Failure", "Parameters"]
                     ),
                 ),
+                ValidationError(
+                    "StartAt target does not exist: Submit Batch Job",
+                    rule=StateMachineDefinition(),
+                    path=deque(["Definition", "StartAt"]),
+                ),
+            ],
+        ),
+        (
+            "Missing StartAt target",
+            {
+                "Definition": {
+                    "StartAt": "Not sure",
+                    "States": {
+                        "Pass One": {
+                            "Type": "Pass",
+                            "Next": "Success",
+                        },
+                        "Success": {
+                            "Type": "Succeed",
+                        },
+                    },
+                }
+            },
+            [
+                ValidationError(
+                    "StartAt target does not exist: Not sure",
+                    rule=StateMachineDefinition(),
+                    path=deque(["Definition", "StartAt"]),
+                ),
+            ],
+        ),
+        (
+            "Parallel state with missing StartAt target",
+            {
+                "Definition": {
+                    "StartAt": "ParallelState",
+                    "States": {
+                        "ParallelState": {
+                            "Type": "Parallel",
+                            "Branches": [
+                                {
+                                    "StartAt": "NonExistent",
+                                    "States": {
+                                        "BranchState": {
+                                            "Type": "Pass",
+                                            "End": True,
+                                        },
+                                    },
+                                }
+                            ],
+                            "End": True,
+                        },
+                    },
+                }
+            },
+            [
+                ValidationError(
+                    "StartAt target does not exist: NonExistent",
+                    rule=StateMachineDefinition(),
+                    path=deque(["Definition", "States", "ParallelState", "Branches", 0, "StartAt"]),
+                ),
+            ],
+        ),
+        (
+            "Map state with missing StartAt target in ItemProcessor",
+            {
+                "Definition": {
+                    "StartAt": "MapState",
+                    "States": {
+                        "MapState": {
+                            "Type": "Map",
+                            "ItemProcessor": {
+                                "StartAt": "NonExistent",
+                                "States": {
+                                    "ProcessItem": {
+                                        "Type": "Pass",
+                                        "End": True,
+                                    },
+                                },
+                            },
+                            "End": True,
+                        },
+                    },
+                }
+            },
+            [
+                ValidationError(
+                    "StartAt target does not exist: NonExistent",
+                    rule=StateMachineDefinition(),
+                    path=deque(["Definition", "States", "MapState", "ItemProcessor", "StartAt"]),
+                ),
             ],
         ),
     ],
