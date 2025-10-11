@@ -106,21 +106,42 @@ class StateMachineDefinition(CfnLintJsonSchema):
     def _validate_start_at(
         self, definition: Any, k: str, add_path_to_message: bool
     ) -> ValidationResult:
-        """Validate that StartAt points to an existing state."""
+        """Validate that StartAt points to an existing state.
+        
+        Per the Amazon States Language specification, StartAt must reference
+        a valid state name that exists in the States object.
+        
+        Reference: https://states-language.net/spec.html#toplevelfields
+        """
+        # Early return if definition is not a dict - nothing to validate
         if not isinstance(definition, dict):
             return
         
         start_at = definition.get("StartAt")
         states = definition.get("States")
         
+        # Early return if StartAt is missing or States is not a dict
+        # Schema validation will catch these cases
         if not start_at or not isinstance(states, dict):
             return
         
-        # Check if StartAt state exists
-        if start_at not in states:
-            message = f"Missing 'Next' target: {start_at} at /StartAt"
+        # Validate that StartAt is a string per ASL spec
+        if not isinstance(start_at, str):
+            message = f"StartAt must be a string, got {type(start_at).__name__} at /StartAt"
             if not add_path_to_message:
-                message = f"Missing 'Next' target: {start_at}"
+                message = f"StartAt must be a string, got {type(start_at).__name__}"
+            yield ValidationError(
+                message,
+                path=deque([k, "StartAt"]),
+                rule=self,
+            )
+            return
+        
+        # Check if StartAt state exists in States object
+        if start_at not in states:
+            message = f"StartAt target does not exist: {start_at} at /StartAt"
+            if not add_path_to_message:
+                message = f"StartAt target does not exist: {start_at}"
             yield ValidationError(
                 message,
                 path=deque([k, "StartAt"]),

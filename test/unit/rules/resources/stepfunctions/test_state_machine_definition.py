@@ -1353,7 +1353,7 @@ def rule():
                     ),
                 ),
                 ValidationError(
-                    "Missing 'Next' target: Submit Batch Job",
+                    "StartAt target does not exist: Submit Batch Job",
                     rule=StateMachineDefinition(),
                     path=deque(["Definition", "StartAt"]),
                 ),
@@ -1377,7 +1377,35 @@ def rule():
             },
             [
                 ValidationError(
-                    "Missing 'Next' target: Not sure",
+                    "StartAt target does not exist: Not sure",
+                    rule=StateMachineDefinition(),
+                    path=deque(["Definition", "StartAt"]),
+                ),
+            ],
+        ),
+        (
+            "StartAt not a string",
+            {
+                "Definition": {
+                    "StartAt": 123,
+                    "States": {
+                        "Pass One": {
+                            "Type": "Pass",
+                            "End": True,
+                        },
+                    },
+                }
+            },
+            [
+                ValidationError(
+                    "123 is not of type 'string'",
+                    rule=StateMachineDefinition(),
+                    validator="type",
+                    schema_path=deque(["properties", "StartAt", "type"]),
+                    path=deque(["Definition", "StartAt"]),
+                ),
+                ValidationError(
+                    "StartAt must be a string, got int",
                     rule=StateMachineDefinition(),
                     path=deque(["Definition", "StartAt"]),
                 ),
