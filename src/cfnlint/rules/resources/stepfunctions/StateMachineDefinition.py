@@ -104,7 +104,7 @@ class StateMachineDefinition(CfnLintJsonSchema):
                 yield self._convert_schema_to_jsonata(), ql_validator
 
     def _validate_start_at(
-        self, definition: Any, k: str, add_path_to_message: bool
+        self, definition: Any, k: str, add_path_to_message: bool, path: deque | None = None
     ) -> ValidationResult:
         """Validate that StartAt points to an existing state.
         
@@ -125,28 +125,49 @@ class StateMachineDefinition(CfnLintJsonSchema):
         if not start_at or not isinstance(states, dict):
             return
         
-        # Validate that StartAt is a string per ASL spec
-        if not isinstance(start_at, str):
-            message = f"StartAt must be a string, got {type(start_at).__name__} at /StartAt"
-            if not add_path_to_message:
-                message = f"StartAt must be a string, got {type(start_at).__name__}"
-            yield ValidationError(
-                message,
-                path=deque([k, "StartAt"]),
-                rule=self,
-            )
-            return
-        
         # Check if StartAt state exists in States object
-        if start_at not in states:
-            message = f"StartAt target does not exist: {start_at} at /StartAt"
-            if not add_path_to_message:
+        if isinstance(start_at, str) and start_at not in states:
+            if path is None:
+                error_path = deque([k, "StartAt"])
+            else:
+                error_path = deque([k] + list(path) + ["StartAt"])
+            
+            if path and add_path_to_message:
+                path_str = '/'.join(str(p) for p in path)
+                message = f"StartAt target does not exist: {start_at} at /{path_str}/StartAt"
+            elif add_path_to_message:
+                message = f"StartAt target does not exist: {start_at} at /StartAt"
+            else:
                 message = f"StartAt target does not exist: {start_at}"
             yield ValidationError(
                 message,
-                path=deque([k, "StartAt"]),
+                path=error_path,
                 rule=self,
             )
+        
+        # Validate nested StartAt in Parallel and Map states
+        for state_name, state in states.items():
+            if not isinstance(state, dict):
+                continue
+            
+            state_type = state.get("Type")
+            
+            # Check Parallel state branches
+            if state_type == "Parallel":
+                branches = state.get("Branches", [])
+                if isinstance(branches, list):
+                    for idx, branch in enumerate(branches):
+                        if isinstance(branch, dict):
+                            branch_path = deque(["States", state_name, "Branches", idx]) if path is None else deque(list(path) + ["States", state_name, "Branches", idx])
+                            yield from self._validate_start_at(branch, k, add_path_to_message, branch_path)
+            
+            # Check Map state ItemProcessor and Iterator (deprecated)
+            if state_type == "Map":
+                for processor_key in ["ItemProcessor", "Iterator"]:
+                    processor = state.get(processor_key)
+                    if isinstance(processor, dict):
+                        processor_path = deque(["States", state_name, processor_key]) if path is None else deque(list(path) + ["States", state_name, processor_key])
+                        yield from self._validate_start_at(processor, k, add_path_to_message, processor_path)
 
     def _validate_step(
         self,

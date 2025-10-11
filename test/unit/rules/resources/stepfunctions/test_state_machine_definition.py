@@ -1384,13 +1384,24 @@ def rule():
             ],
         ),
         (
-            "StartAt not a string",
+            "Parallel state with missing StartAt target",
             {
                 "Definition": {
-                    "StartAt": 123,
+                    "StartAt": "ParallelState",
                     "States": {
-                        "Pass One": {
-                            "Type": "Pass",
+                        "ParallelState": {
+                            "Type": "Parallel",
+                            "Branches": [
+                                {
+                                    "StartAt": "NonExistent",
+                                    "States": {
+                                        "BranchState": {
+                                            "Type": "Pass",
+                                            "End": True,
+                                        },
+                                    },
+                                }
+                            ],
                             "End": True,
                         },
                     },
@@ -1398,16 +1409,39 @@ def rule():
             },
             [
                 ValidationError(
-                    "123 is not of type 'string'",
+                    "StartAt target does not exist: NonExistent",
                     rule=StateMachineDefinition(),
-                    validator="type",
-                    schema_path=deque(["properties", "StartAt", "type"]),
-                    path=deque(["Definition", "StartAt"]),
+                    path=deque(["Definition", "States", "ParallelState", "Branches", 0, "StartAt"]),
                 ),
+            ],
+        ),
+        (
+            "Map state with missing StartAt target in ItemProcessor",
+            {
+                "Definition": {
+                    "StartAt": "MapState",
+                    "States": {
+                        "MapState": {
+                            "Type": "Map",
+                            "ItemProcessor": {
+                                "StartAt": "NonExistent",
+                                "States": {
+                                    "ProcessItem": {
+                                        "Type": "Pass",
+                                        "End": True,
+                                    },
+                                },
+                            },
+                            "End": True,
+                        },
+                    },
+                }
+            },
+            [
                 ValidationError(
-                    "StartAt must be a string, got int",
+                    "StartAt target does not exist: NonExistent",
                     rule=StateMachineDefinition(),
-                    path=deque(["Definition", "StartAt"]),
+                    path=deque(["Definition", "States", "MapState", "ItemProcessor", "StartAt"]),
                 ),
             ],
         ),
